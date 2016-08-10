@@ -1,0 +1,11 @@
+ID;ADDRESSS;DEMAND;READY_TIME;DUE_DATE;SERVICE_TIME
+0;Calle 70 #43-130, Barranquilla, Atlantico, Colombia;0;6:00;18:00;0
+1;Calle 90 #56-56, Barranquilla, Atlantico, Colombia;45;6:00;7:00;900
+2;Carrera 70 # 82-82, Barranquilla, Atlantico, Colombia;20;8:00;10:00;900
+3;Calle 79 # 60-60, Barranquilla, Atlantico, Colombia;50;6:00;10:00;900
+4;Cra 42 # 56-11, Barranquilla, Atlantico, Colombia;20;6:00;7:00;900
+5;Calle 53d # 31-31, Barranquilla, Atlantico, Colombia;50;8:00;10:00;900
+6;Calle 45 # 35-35, Barranquilla, Atlantico, Colombia;45;6:00;10:00;900
+7;Calle 72 # 65-65, Barranquilla, Atlantico, Colombia;20;6:00;7:00;900
+8;Carrera 71 # 76-76, Barranquilla, Atlantico, Colombia;45;8:00;10:00;900
+9;Carrera 82 # 58-157, Barranquilla, Atlantico, Colombia;50;6:00;10:00;900

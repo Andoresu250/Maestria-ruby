@@ -1,24 +1,22 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    addressable (2.4.0)
-    domain_name (0.5.20160615)
-      unf (>= 0.0.5, < 1.0.0)
-    http (2.0.3)
-      addressable (~> 2.3)
-      http-cookie (~> 1.0)
-      http-form_data (~> 1.0.1)
-      http_parser.rb (~> 0.6.0)
-    http-cookie (1.0.2)
-      domain_name (~> 0.5)
-    http-form_data (1.0.1)
-    http_parser.rb (0.6.0)
-    unf (0.1.4)
-      unf_ext
-    unf_ext (0.0.7.2-x86-mingw32)
+    certified (1.0.0)
+    colored (1.2)
+    console_view_helper (0.0.4)
+      colored (= 1.2)
+    google_maps_service (0.4.1)
+      hurley (~> 0.1)
+      multi_json (~> 1.11)
+      retriable (~> 2.0)
+    hurley (0.2)
+    multi_json (1.12.1)
+    retriable (2.1.0)
 
 PLATFORMS
   x86-mingw32
 
 DEPENDENCIES
-  http
+  certified
+  console_view_helper
+  google_maps_service
