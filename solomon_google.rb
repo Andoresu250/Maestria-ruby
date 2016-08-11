@@ -35,17 +35,32 @@ class Node
     @service_time = service_time.to_i    
   end  
 
-  def calculate_time(node, time)
-    origins = [@place]
-    destinations = [node.place]    
-    gmaps = GoogleMapsService::Client.new
-    matrix = gmaps.distance_matrix(origins, destinations,
-        mode: 'driving',
-        language: 'es-co',    
-        units: 'metric',
-        departure_time: time )
-    p "A: #{origins[0]} b: #{destinations[0]} distance: #{matrix[:rows][0][:elements][0][:duration_in_traffic][:value]}"
-    matrix[:rows][0][:elements][0][:duration_in_traffic][:value].to_f
+  def calculate_time(node, time)        
+    while(true)
+      begin
+        origins = [@place]
+        destinations = [node.place]    
+        gmaps = GoogleMapsService::Client.new
+        matrix = gmaps.distance_matrix(origins, destinations,
+            mode: 'driving',
+            language: 'es-co',    
+            units: 'metric',
+            departure_time: time )
+        #p "A: #{origins[0]} B: #{destinations[0]} TIME: #{matrix[:rows][0][:elements][0][:duration_in_traffic][:value]}"
+        return matrix[:rows][0][:elements][0][:duration_in_traffic][:value].to_f
+      rescue
+        error = ($!).to_s                
+        p error        
+        if error == "You have exceeded your daily request quota for this API."          
+          $index = $index + 1 if $index < $keys.size
+          GoogleMapsService.configure do |config|
+            config.key = $keys[$index]
+          end
+        end
+        p "query limit se esperan 15 segundos..."
+        sleep(15)
+      end
+    end
   end
 
 end
@@ -88,8 +103,8 @@ class Route
     @demand = capacity
     add $nodesManager.origin
     seed criterion
-    add $nodesManager.origin
-    split_routes.each do |split|
+    add $nodesManager.origin            
+    split_routes.each do |split|      
       assign_values calculate_values(split[0], split[1])
     end
   end
@@ -106,8 +121,7 @@ class Route
   # Get the times between two nodes
   def calculate_values(node_i, node_j, object = self)
     values = {}
-    wik = node_i == $nodesManager.origin ? node_i.ready_time : object.services_time
-
+    wik = node_i == $nodesManager.origin ? node_i.ready_time : object.services_time     
     distance = node_i.calculate_time(node_j, object.current_time)    
     values[:arrival_time]  = wik + node_i.service_time + distance
     wait_time = ready_time(node_j, values[:arrival_time])
@@ -129,7 +143,7 @@ class Route
   # insert a node and calculate times for the new potencial route
   def insert_node(node, position)
     add(node, position)
-    split_routes.each do |split|
+    split_routes.each do |split|      
       values = calculate_values(split[0], split[1])
       if values
         assign_values(values)
@@ -142,8 +156,7 @@ class Route
   def calculate_c2(node, position_node, original_route, constant)
 
     previous_node = @route[position_node - 1]
-    next_node = @route[position_node + 1]
-
+    next_node = @route[position_node + 1]    
     c11 = previous_node.calculate_time(node, @current_time) + node.calculate_time(next_node, @current_time) - (RoutesManager::VARIATIONS[constant][:m] * previous_node.calculate_time(next_node, @current_time))
 
     route_original_c12 = original_route.route[0..position_node]
@@ -155,6 +168,7 @@ class Route
     copy_alternative = self.clone
     copy_alternative.reset_attributes(copy_alternative)
 
+    
     split_routes(route_original_c12).each do |split|
       assign_values(calculate_values(split[0], split[1], copy_original), copy_original)
     end
@@ -171,7 +185,7 @@ class Route
 
   def to_s
     s = "[ "
-    @route.each { |n| s += " #{ n.id + 1 } " }
+    @route.each { |n| s += " #{ n.id } " }
     s += " ]"
   end
 
@@ -192,9 +206,9 @@ class Route
 
   def max_node(nodeB)        
     max_time = -999
-    node = nil
-    $nodesManager.nodes.each do |nodeA|
-      time = -999  
+    node = nil    
+    $nodesManager.unvisited.each do |nodeA|
+      time = -999        
       time = nodeB.calculate_time(nodeA, Time.utc(2016,9,6,6,0) ) if nodeA != nodeB
       if time > max_time
         max_time = time
@@ -256,14 +270,11 @@ class RoutesManager
     create_routes
   end
 
-  def create_routes
-    (1..4).each do |criterion|
-      #@routes[:criterion_1][criterion] = []
-      #@routes[:criterion_2][criterion] = []
-      @routes[:criterion_1][criterion] = generate_routes(1, criterion)
-      @routes[:criterion_2][criterion] = generate_routes(2, criterion)
-      #@routes[:criterion_2][4] = generate_routes(2, 4)
-    end
+  def create_routes    
+      @routes[:criterion_1][1] = generate_routes(1, 1)
+      @routes[:criterion_1][2] = []
+      @routes[:criterion_2][1] = []
+      @routes[:criterion_2][2] = []    
   end
 
   # NOTE: when the criterion change the unvisted array should be reload
@@ -275,8 +286,7 @@ class RoutesManager
     begin
       unvisited = $nodesManager.unvisited.clone
       new_route = node_added = nil
-      max_c2 = -999999999999999
-
+      max_c2 = -999999999999999      
       # Insert a node in each posible position and choose the best option
       unvisited.each do |node|
         (1..route_original.route.size - 1).each do |position|
@@ -284,44 +294,65 @@ class RoutesManager
           alternative_route.route = route_original.route.clone
           alternative_route.demand  = @capacity
           alternative_route.arrival_time = alternative_route.wait_time = alternative_route.services_time = alternative_route.total_distance = alternative_route.total_service_time = 0
-          if alternative_route.insert_node(node, position)
+          if alternative_route.insert_node(node, position)            
             c2 = alternative_route.calculate_c2(node, position, route_original, criterion)
-            if c2 >= max_c2
+            if c2 >= max_c2              
               max_c2, new_route =  c2, alternative_route.clone
               new_route.route = alternative_route.route.clone
               node_added = node
             end
-          end
-
-          $nodesManager.unvisited = unvisited.clone
+          end          
+          $nodesManager.unvisited = unvisited.clone          
         end
       end
 
       # Assign the best route in the route original, and eliminated the node of the array unvisited
       if new_route.nil?
-        routes << route_original
-        route_original = Route.new(seed, @capacity)
-        if $nodesManager.unvisited.empty?
+        routes << route_original        
+        route_original = Route.new(seed, @capacity)        
+        if $nodesManager.unvisited.empty?          
           routes << route_original
         end
       else
         route_original = new_route.clone
         route_original.route = new_route.route.clone
-        $nodesManager.unvisited = unvisited.clone
-        $nodesManager.unvisited.delete(node_added)        
-        routes << route_original if $nodesManager.unvisited.empty?
+        $nodesManager.unvisited = unvisited.clone        
+        $nodesManager.unvisited.delete(node_added)                        
+        if $nodesManager.unvisited.empty?          
+          routes << route_original 
+        end        
       end
     end while !$nodesManager.unvisited.empty?
 
     # Reset variables in order of find a new route
-    $nodesManager.unvisited = unvisited_copy    
-    routes
+    $nodesManager.unvisited = unvisited_copy 
+    
+    routes.each do |route|      
+      timeAB = 0
+      route_wait_time = 0
+      (0..route.route.length-2).each do |index|
+        nodeA = route.route[index]
+        nodeB = route.route[index + 1]        
+        timeAB += nodeA.calculate_time(nodeB,nodeA.ready_time);        
+        wait_time = 0
+        wait_time = nodeB.ready_time - ($nodesManager.origin.ready_time + timeAB) if $nodesManager.origin.ready_time + timeAB < nodeB.ready_time          
+        route_wait_time += wait_time
+        timeAB += nodeA.service_time + wait_time        
+      end
+      route.total_distance = timeAB
+      route.wait_time = route_wait_time
+      route.arrival_time = $nodesManager.origin.ready_time + timeAB
+    end
   end
 
   def total_distance(criterion, variables)
     criterion = criterion == 1 ? :criterion_1 : :criterion_2
     sum = 0
-    @routes[criterion][variables].each { |route| sum += route.total_distance }
+    begin
+      @routes[criterion][variables].each { |route| sum += route.total_distance }
+    rescue
+
+    end
     sum
   end
 end
@@ -343,7 +374,7 @@ class Gui
 
   def menu
     Gem.win_platform? ? system('cls') : system('clear')
-    puts banner('Solomon instances', indent: 1)
+    puts banner('Files', indent: 1)
     selected = list_files
     if selected
       #puts Benchmark.measure { $nodesManager = NodesManager.new(selected); routes_manager = RoutesManager.new(200, 25) }
@@ -376,26 +407,48 @@ class Gui
 
   def show_routes
 
-    (1..2).each do |criterion|
+    (1..1).each do |criterion|
       puts criterion == 1 ? banner('Criterion 1',  width: 100) : banner('Criterion 2', width: 100)
       key = criterion == 1 ? :criterion_1 : :criterion_2
       puts nl
-      (1..4).each do |value|
+      (1..1).each do |value|
         puts "α1 = #{RoutesManager::VARIATIONS[value][:alfa_1]}, α2 = #{RoutesManager::VARIATIONS[value][:alfa_2]}, μ = #{RoutesManager::VARIATIONS[value][:m]}, λ = #{RoutesManager::VARIATIONS[value][:lambda]}"
-        puts "Total distance: #{@routes_manager.total_distance(criterion, value)}"
-        puts nl
+        puts "Total Time: #{@routes_manager.total_distance(criterion, value)}"
+        puts nl        
         list = @routes_manager.routes[key][value].map { |route| "#{idt}#{route.to_s} #{nl}" \
-                                                                          "#{idt}Distance: #{route.total_distance} #{nl}" \
-                                                                          "#{idt}Waiting time: #{route.wait_time} #{nl}" \
-                                                                          "#{idt}Services time: #{route.total_service_time} #{nl}"\
-                                                                          "#{idt}Arrival time: #{route.arrival_time} #{nl}"\
-                                                                          "#{idt}Demand: #{@@data[:capacity] - route.demand} "}
+                                                                        "#{idt}Time: #{route.total_distance} s #{nl}" \
+                                                                        "#{idt}Waiting time: #{route.wait_time} s #{nl}" \
+                                                                        "#{idt}Services time: #{route.total_service_time} #{nl}"\
+                                                                        "#{idt}Arrival time: #{route.arrival_time} #{nl}"\
+                                                                        "#{idt}Demand: #{@@data[:capacity] - route.demand} "}
         puts olist(list)
         puts nl
       end
 
     end
+    final_path = []  
+    points = [] 
+    routes_size = []  
+    @routes_manager.routes[:criterion_1][1].each do |route|
+      route.route.each { |node| points.push(node.place) }      
+      (0..route.route.size-2).each do |i|      
+        final_path.push({from: route.route[i].place, to: route.route[i + 1].place})
+      end    
+      routes_size.push(route.route.size - 1)        
+    end
+    (1..routes_size.size-1).each do |index|
+      routes_size[index] += routes_size[index-1]
+    end
+    points = points.uniq
 
+
+    text = File.read("index_template.html")
+    new_contents = text.gsub('**cities**', "#{final_path.to_json}")
+    new_contents = new_contents.gsub('**nonclusters**', "#{points.to_json}")
+    new_contents = new_contents.gsub('**routesSize**', "#{routes_size.to_json}")
+    File.open("output.html", "w") {|file| file.puts new_contents }
+    system("open output.html")
+    return
   end
 end
 
@@ -404,10 +457,10 @@ end
 
 # -------------------- Main program -------------------- #
 
-key = 'AIzaSyBnfnAQuz2ulq3ET3OY8p5uB0wSpDjfMYY';
-
+$keys = ['AIzaSyBnfnAQuz2ulq3ET3OY8p5uB0wSpDjfMYY', 'AIzaSyA8fgbD07roSeqUnCt25fk_g7wqP6O4nlU', 'AIzaSyAMXM81rmNJriowbyssNGgsD1zh1k8jyuY', 'AIzaSyA2Ch402MT8YquRQb7yY54EL1H25NcT3VU'];
+$index = 0
 GoogleMapsService.configure do |config|
-  config.key = key
+  config.key = $keys[$index]
 end
 gui = Gui.new
 gui.menu

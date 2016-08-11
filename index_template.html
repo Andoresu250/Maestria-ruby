@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+  </body>
+  <script type="text/javascript">
+    //var cities = []
+    var cities = **cities**  
+    var nonClusters = **nonclusters**  
+    var routesSize = **routesSize** 
+    var map;
+    var colors = [ "#000230", "#1e1227", "#39064a", "#741109", "#033550",
+                "#23371e", "#003888", "#66002a", "#b31000", "#1199ff",
+                "#008080", "#aa3355", "#cc0000", "#bdf648", "#e9df15",
+                "#00cc00", "#cc00cc", "#81217a", "#b4be31", "#be8231"  
+            ];
+    function initMap() {
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: {lat: 10.964814, lng: -74.799508},
+        zoom: 6
+      });
+      var directionsDisplay = new google.maps.DirectionsRenderer({
+        map: map
+      });
+      // Set destination, origin and travel mode.
+    }
+  </script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC38gPZwcyNT69bQlwWEjXvuxOa8owQKAg&callback=initMap"></script>
+  <script type="text/javascript"> 
+  
+
+  var cur = 0;
+  var colorIndex = 0;
+  var color = null;
+  var directionsService = new google.maps.DirectionsService();
+  var geocoder;
+  geocoder = new google.maps.Geocoder();
+
+  var requestArray = [], renderArray = [], map;
+  function sleepFor( sleepDuration ){
+      var now = new Date().getTime();
+      while(new Date().getTime() < now + sleepDuration){  }
+  }
+  for (i in nonClusters) {
+    geocoder.geocode( { 'address': nonClusters[i]}, function(results, status) {
+      if (status == google.maps.GeocoderStatus.OK) {        
+        map.setCenter(results[0].geometry.location);
+        var marker = new google.maps.Marker({
+            map: map,            
+            position: results[0].geometry.location
+        });
+      } else {
+        console.log('Geocode was not successful for the following reason: ' + status);
+      }
+    });
+  }
+  
+    
+  for(nodes of cities){
+    requestArray.push({
+      origin: nodes.from,
+      destination: nodes.to,
+      travelMode: google.maps.DirectionsTravelMode.DRIVING
+    });           
+  }    
+  submitRequests();
+  
+  
+  function submitRequests(){
+    requestLength = requestArray.length
+    if(requestLength != 0) {      
+      var rand = Math.floor(Math.random()*colors.length);      
+      color = colors[rand]; 
+      directionsService.route(requestArray[0], directionResults);
+    }
+  }
+
+  function directionResults(result, status) {      
+      if (status == google.maps.DirectionsStatus.OK) {          
+          var polylineOptionsActual = new google.maps.Polyline({
+            strokeColor: color,
+            strokeOpacity: 0.9,
+            strokeWeight: 5
+          });
+          renderArray[cur] = new google.maps.DirectionsRenderer({polylineOptions: polylineOptionsActual, suppressMarkers: true});
+          renderArray[cur].setMap(map);
+          renderArray[cur].setDirections(result);
+          cur++
+          if(cur >= routesSize[colorIndex]){
+            colorIndex++;
+            var rand = Math.floor(Math.random()*colors.length); 
+            color = colors[rand]; 
+          }          
+          if (cur < requestLength) {
+            directionsService.route(requestArray[cur], directionResults);
+          }
+      } else {
+        console.log(status)
+        console.log("esperando 5 segundos .....");
+        cur--;
+        sleepFor(5000);
+        if (cur < requestLength) {
+          directionsService.route(requestArray[cur], directionResults);
+        }
+      }
+  }
+  </script>
+
+</html>
