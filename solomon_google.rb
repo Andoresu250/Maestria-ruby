@@ -1,9 +1,12 @@
 require 'google_maps_service'
-require 'http'
 require 'certified'
 require 'csv'
 require 'console_view_helper'
-require 'benchmark'
+require 'net/http'
+require 'uri'
+require 'openssl'
+require 'json'
+OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 # ---------------------- Classes ---------------------- #
 class FileToNodes
 
@@ -37,26 +40,82 @@ class Node
 
   def calculate_time(node, time)        
     while(true)
-      begin
-        origins = [@place]
-        destinations = [node.place]    
-        gmaps = GoogleMapsService::Client.new
-        matrix = gmaps.distance_matrix(origins, destinations,
-            mode: 'driving',
-            language: 'es-co',    
-            units: 'metric',
-            departure_time: time )
-        #p "A: #{origins[0]} B: #{destinations[0]} TIME: #{matrix[:rows][0][:elements][0][:duration_in_traffic][:value]}"
-        return matrix[:rows][0][:elements][0][:duration_in_traffic][:value].to_f
-      rescue
-        error = ($!).to_s                
-        p error        
-        if error == "You have exceeded your daily request quota for this API."          
-          $index = $index + 1 if $index < $keys.size
-          GoogleMapsService.configure do |config|
-            config.key = $keys[$index]
-          end
-        end
+
+      origin = @place.gsub('#', ' ').gsub(' ', '+')
+      destination = node.place.gsub('#', ' ').gsub(' ', '+')
+      date = time.to_i
+
+      uri = 'https://maps.googleapis.com/maps/api/directions/json?' +
+            "origin=#{origin}" + '&' +
+            "destination=#{destination}" + '&' +
+            'mode=driving' + '&' +
+            "departure_time=#{date}" + '&' +
+            'traffic_model=pessimistic' + '&' +
+            "key=#{$new_keys[$new_index]}"      
+
+      json_object = JSON.parse(Net::HTTP.get URI(uri))            
+      if json_object['status'] == 'OK'
+        #return json_object['routes'][0]['legs'][0]['duration_in_traffic']['value'].to_f
+        return json_object['routes'][0]['legs'][0]['duration']['value'].to_f
+        #return json_object['routes'][0]['legs'][0]['distance']['value'].to_f
+      else
+        p json_object['status']
+        p "query limit se esperan 15 segundos..."
+        sleep(15)
+      end
+    end
+  end
+
+  def calculate_distance(node, time)        
+    while(true)
+
+      origin = @place.gsub('#', ' ').gsub(' ', '+')
+      destination = node.place.gsub('#', ' ').gsub(' ', '+')
+      date = time.to_i
+
+      uri = 'https://maps.googleapis.com/maps/api/directions/json?' +
+            "origin=#{origin}" + '&' +
+            "destination=#{destination}" + '&' +
+            'mode=driving' + '&' +
+            "departure_time=#{date}" + '&' +
+            'traffic_model=pessimistic' + '&' +
+            "key=#{$new_keys[$new_index]}"      
+
+      json_object = JSON.parse(Net::HTTP.get URI(uri))            
+      if json_object['status'] == 'OK'
+        #return json_object['routes'][0]['legs'][0]['duration_in_traffic']['value'].to_f
+        #return json_object['routes'][0]['legs'][0]['duration']['value'].to_f
+        return json_object['routes'][0]['legs'][0]['distance']['value'].to_f
+      else
+        p json_object['status']
+        p "query limit se esperan 15 segundos..."
+        sleep(15)
+      end
+    end
+  end
+
+  def calculate_time_traffic(node, time)        
+    while(true)
+
+      origin = @place.gsub('#', ' ').gsub(' ', '+')
+      destination = node.place.gsub('#', ' ').gsub(' ', '+')
+      date = time.to_i
+
+      uri = 'https://maps.googleapis.com/maps/api/directions/json?' +
+            "origin=#{origin}" + '&' +
+            "destination=#{destination}" + '&' +
+            'mode=driving' + '&' +
+            "departure_time=#{date}" + '&' +
+            'traffic_model=pessimistic' + '&' +
+            "key=#{$new_keys[$new_index]}"      
+
+      json_object = JSON.parse(Net::HTTP.get URI(uri))            
+      if json_object['status'] == 'OK'
+        return json_object['routes'][0]['legs'][0]['duration_in_traffic']['value'].to_f
+        #return json_object['routes'][0]['legs'][0]['duration']['value'].to_f
+        #return json_object['routes'][0]['legs'][0]['distance']['value'].to_f
+      else
+        p json_object['status']
         p "query limit se esperan 15 segundos..."
         sleep(15)
       end
@@ -93,13 +152,13 @@ end
 
 class Route
 
-  attr_accessor :route, :arrival_time, :wait_time, :services_time, :total_distance, :demand, :total_service_time, :current_time
+  attr_accessor :route, :arrival_time, :arrival_time_traffic, :wait_time, :wait_time_traffic, :services_time, :total_distance, :total_time, :total_time_traffic ,:demand, :total_service_time, :current_time
 
   def initialize criterion, capacity
     @current_time = Time.utc(2016,9,6,6,0)
     @route = []
     @arrival_time = Time.utc(2016,9,6,6,0)
-    @wait_time = @services_time = @total_distance = @total_service_time = 0
+    @wait_time = @services_time = @total_distance = @total_service_time = @total_time = @total_time_traffic = @wait_time_traffic = 0
     @demand = capacity
     add $nodesManager.origin
     seed criterion
@@ -123,12 +182,14 @@ class Route
     values = {}
     wik = node_i == $nodesManager.origin ? node_i.ready_time : object.services_time     
     distance = node_i.calculate_time(node_j, object.current_time)    
+    time = node_i.calculate_distance(node_j, object.current_time)
     values[:arrival_time]  = wik + node_i.service_time + distance
     wait_time = ready_time(node_j, values[:arrival_time])
 
     demand = object.demand - node_i.demand
     if wait_time && demand >= 0
       values[:distance] = distance
+      values[:time] = time
       values[:wait_time] = wait_time
       values[:services_time] = values[:arrival_time] + wait_time
       values[:total_service_time] = node_i.service_time
@@ -191,7 +252,7 @@ class Route
 
   def reset_attributes(object)
     object.arrival_time = Time.utc(2016,9,6,6,0)    
-    object.wait_time = object.services_time = object.total_distance = object.total_service_time = 0
+    object.wait_time = object.services_time = object.total_distance = object.total_service_time = object.total_time = object.total_time_traffic = 0
     object.demand = Gui.data[:capacity]
   end
 
@@ -245,6 +306,7 @@ class Route
   def assign_values(values, object = self)
     object.arrival_time = values[:arrival_time]
     object.total_distance += values[:distance]
+    object.total_time += values[:time]
     object.wait_time += values[:wait_time]
     object.services_time = values[:services_time]
     object.total_service_time += values[:total_service_time]
@@ -329,19 +391,45 @@ class RoutesManager
     
     routes.each do |route|      
       timeAB = 0
-      route_wait_time = 0
+      time_trafficAB = 0
+      distanceAB = 0
+      route_wait_time = 0      
+      route_wait_time_traffic = 0
+      current_time = route.route[0].ready_time + route.route[0].service_time
+      current_time_traffic = route.route[0].ready_time + route.route[0].service_time
       (0..route.route.length-2).each do |index|
+
         nodeA = route.route[index]
         nodeB = route.route[index + 1]        
-        timeAB += nodeA.calculate_time(nodeB,nodeA.ready_time);        
-        wait_time = 0
-        wait_time = nodeB.ready_time - ($nodesManager.origin.ready_time + timeAB) if $nodesManager.origin.ready_time + timeAB < nodeB.ready_time          
+
+        timeAB += nodeA.calculate_time(nodeB, current_time)
+        time_trafficAB += nodeA.calculate_time_traffic(nodeB, current_time_traffic)
+
+        distanceAB += nodeA.calculate_distance(nodeB, current_time)            
+
+        wait_time = 0        
+        wait_time = nodeB.ready_time - (current_time + timeAB + nodeA.service_time) if current_time + timeAB + nodeA.service_time < nodeB.ready_time          
+
+        wait_time_traffic = 0        
+        wait_time_traffic = nodeB.ready_time - (current_time_traffic + time_trafficAB + nodeA.service_time) if current_time_traffic + time_trafficAB + nodeA.service_time < nodeB.ready_time          
+
+        current_time += (nodeA.service_time + wait_time + timeAB)
+        current_time_traffic += (nodeA.service_time + wait_time_traffic + time_trafficAB)
+
         route_wait_time += wait_time
+        route_wait_time_traffic += wait_time_traffic
+
         timeAB += nodeA.service_time + wait_time        
+        time_trafficAB += nodeA.service_time + wait_time_traffic
+
       end
       route.total_distance = timeAB
+      route.total_time = distanceAB
+      route.total_time_traffic = time_trafficAB
       route.wait_time = route_wait_time
+      route.wait_time_traffic = route_wait_time_traffic
       route.arrival_time = $nodesManager.origin.ready_time + timeAB
+      route.arrival_time_traffic = $nodesManager.origin.ready_time + time_trafficAB
     end
   end
 
@@ -350,6 +438,28 @@ class RoutesManager
     sum = 0
     begin
       @routes[criterion][variables].each { |route| sum += route.total_distance }
+    rescue
+
+    end
+    sum
+  end
+
+  def total_time(criterion, variables)
+    criterion = criterion == 1 ? :criterion_1 : :criterion_2
+    sum = 0
+    begin
+      @routes[criterion][variables].each { |route| sum += route.total_time }
+    rescue
+
+    end
+    sum
+  end
+
+  def total_time_traffic(criterion, variables)
+    criterion = criterion == 1 ? :criterion_1 : :criterion_2
+    sum = 0
+    begin
+      @routes[criterion][variables].each { |route| sum += route.total_time_traffic }
     rescue
 
     end
@@ -414,14 +524,25 @@ class Gui
       (1..1).each do |value|
         puts "α1 = #{RoutesManager::VARIATIONS[value][:alfa_1]}, α2 = #{RoutesManager::VARIATIONS[value][:alfa_2]}, μ = #{RoutesManager::VARIATIONS[value][:m]}, λ = #{RoutesManager::VARIATIONS[value][:lambda]}"
         puts "Total Time: #{@routes_manager.total_distance(criterion, value)}"
+        puts "Total Time with traffic: #{@routes_manager.total_time_traffic(criterion, value)}"
+        puts "Total Distance: #{@routes_manager.total_time(criterion, value)}"
+
         puts nl        
         list = @routes_manager.routes[key][value].map { |route| "#{idt}#{route.to_s} #{nl}" \
                                                                         "#{idt}Time: #{route.total_distance} s #{nl}" \
+                                                                        "#{idt}Time with traffic: #{route.total_time_traffic} s #{nl}" \
+                                                                        "#{idt}Distance: #{route.total_time} s #{nl}" \
                                                                         "#{idt}Waiting time: #{route.wait_time} s #{nl}" \
+                                                                        "#{idt}Waiting time with traffic: #{route.wait_time_traffic} s #{nl}" \
                                                                         "#{idt}Services time: #{route.total_service_time} #{nl}"\
                                                                         "#{idt}Arrival time: #{route.arrival_time} #{nl}"\
+                                                                        "#{idt}Arrival time with traffic: #{route.arrival_time_traffic} #{nl}"\
                                                                         "#{idt}Demand: #{@@data[:capacity] - route.demand} "}
-        puts olist(list)
+        list_string = olist(list)
+        out_file = File.new("out.txt", "w")    
+        out_file.puts(list_string.to_s)
+        out_file.close
+        puts list_string
         puts nl
       end
 
@@ -458,7 +579,9 @@ end
 # -------------------- Main program -------------------- #
 
 $keys = ['AIzaSyBnfnAQuz2ulq3ET3OY8p5uB0wSpDjfMYY', 'AIzaSyA8fgbD07roSeqUnCt25fk_g7wqP6O4nlU', 'AIzaSyAMXM81rmNJriowbyssNGgsD1zh1k8jyuY', 'AIzaSyA2Ch402MT8YquRQb7yY54EL1H25NcT3VU'];
+$new_keys = ['AIzaSyCmtBZiwE3OKQB5MuE32GrIsiBYWKvCafY']
 $index = 0
+$new_index = 0
 GoogleMapsService.configure do |config|
   config.key = $keys[$index]
 end
