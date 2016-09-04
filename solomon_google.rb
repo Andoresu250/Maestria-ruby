@@ -34,7 +34,7 @@ class Node
 
   def initialize(id, place, demand, ready_time, due_time, service_time)
     @id, @place = id.to_i, place
-    @demand, @ready_time, @due_time = demand.to_i, Time.utc(2016,9,1,ready_time.split(":")[0].to_i,ready_time.split(":")[1].to_i), Time.utc(2016,9,1,due_time.split(":")[0].to_i,due_time.split(":")[1].to_i)
+    @demand, @ready_time, @due_time = demand.to_i, Time.utc(2016,9,29,ready_time.split(":")[0].to_i,ready_time.split(":")[1].to_i), Time.utc(2016,9,29,due_time.split(":")[0].to_i,due_time.split(":")[1].to_i)
     @service_time = service_time.to_i    
   end  
 
@@ -155,9 +155,9 @@ class Route
   attr_accessor :route, :arrival_time, :arrival_time_traffic, :wait_time, :wait_time_traffic, :services_time, :total_distance, :total_time, :total_time_traffic ,:demand, :total_service_time, :current_time
 
   def initialize criterion, capacity
-    @current_time = Time.utc(2016,9,6,6,0)
+    @current_time = Time.utc(2016,9,29,6,0)
     @route = []
-    @arrival_time = Time.utc(2016,9,6,6,0)
+    @arrival_time = Time.utc(2016,9,29,6,0)
     @wait_time = @services_time = @total_distance = @total_service_time = @total_time = @total_time_traffic = @wait_time_traffic = 0
     @demand = capacity
     add $nodesManager.origin
@@ -251,7 +251,7 @@ class Route
   end
 
   def reset_attributes(object)
-    object.arrival_time = Time.utc(2016,9,6,6,0)    
+    object.arrival_time = Time.utc(2016,9,29,6,0)    
     object.wait_time = object.services_time = object.total_distance = object.total_service_time = object.total_time = object.total_time_traffic = 0
     object.demand = Gui.data[:capacity]
   end
@@ -270,7 +270,7 @@ class Route
     node = nil    
     $nodesManager.unvisited.each do |nodeA|
       time = -999        
-      time = nodeB.calculate_time(nodeA, Time.utc(2016,9,6,6,0) ) if nodeA != nodeB
+      time = nodeB.calculate_time(nodeA, Time.utc(2016,9,29,6,0) ) if nodeA != nodeB
       if time > max_time
         max_time = time
         node = nodeA
@@ -523,18 +523,18 @@ class Gui
       puts nl
       (1..1).each do |value|
         puts "α1 = #{RoutesManager::VARIATIONS[value][:alfa_1]}, α2 = #{RoutesManager::VARIATIONS[value][:alfa_2]}, μ = #{RoutesManager::VARIATIONS[value][:m]}, λ = #{RoutesManager::VARIATIONS[value][:lambda]}"
-        puts "Total Time: #{@routes_manager.total_distance(criterion, value)}"
-        puts "Total Time with traffic: #{@routes_manager.total_time_traffic(criterion, value)}"
-        puts "Total Distance: #{@routes_manager.total_time(criterion, value)}"
+        puts "Total Time: #{@routes_manager.total_distance(criterion, value)} s"
+        puts "Total Time with traffic: #{@routes_manager.total_time_traffic(criterion, value)} s"
+        puts "Total Distance: #{@routes_manager.total_time(criterion, value)} m"
 
         puts nl        
         list = @routes_manager.routes[key][value].map { |route| "#{idt}#{route.to_s} #{nl}" \
                                                                         "#{idt}Time: #{route.total_distance} s #{nl}" \
                                                                         "#{idt}Time with traffic: #{route.total_time_traffic} s #{nl}" \
-                                                                        "#{idt}Distance: #{route.total_time} s #{nl}" \
+                                                                        "#{idt}Distance: #{route.total_time} m #{nl}" \
                                                                         "#{idt}Waiting time: #{route.wait_time} s #{nl}" \
                                                                         "#{idt}Waiting time with traffic: #{route.wait_time_traffic} s #{nl}" \
-                                                                        "#{idt}Services time: #{route.total_service_time} #{nl}"\
+                                                                        "#{idt}Services time: #{route.total_service_time} s #{nl} "\
                                                                         "#{idt}Arrival time: #{route.arrival_time} #{nl}"\
                                                                         "#{idt}Arrival time with traffic: #{route.arrival_time_traffic} #{nl}"\
                                                                         "#{idt}Demand: #{@@data[:capacity] - route.demand} "}
