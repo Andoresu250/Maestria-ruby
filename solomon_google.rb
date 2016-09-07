@@ -490,8 +490,19 @@ class Gui
       #puts Benchmark.measure { $nodesManager = NodesManager.new(selected); routes_manager = RoutesManager.new(200, 25) }
       @@data = FileToNodes.getNodes(selected)
       $nodesManager =  explain('Reading file ', ' done') { NodesManager.new(@@data[:nodes]) }
+      $nodesManager.nodes.each do |node|
+        if $nodesManager.origin != node
+          time = Time.utc(2016,9,29,6,0)
+          if time + $nodesManager.origin.calculate_time_traffic(node, time) > $nodesManager.origin.due_time
+            $nodesManager.unvisited.delete(node)
+            puts "El nodo con ID: #{node.id} NO puede estar en la solucion"
+          else
+            puts "El nodo con ID: #{node.id} si puede estar en la solucion"
+          end
+        end
+      end
       @routes_manager = explain('Creating routes ', ' done') { RoutesManager.new(@@data[:capacity], @@data[:vehicles_number]) }
-      #cls
+      #cls      
       #$Gem.win_platform? ? system('cls') : system('clear')
       puts Gem.win_platform? ? system('cls') : system('clear')
       Gem.win_platform? ? system('cls') : system('clear')
@@ -579,7 +590,14 @@ end
 # -------------------- Main program -------------------- #
 
 $keys = ['AIzaSyBnfnAQuz2ulq3ET3OY8p5uB0wSpDjfMYY', 'AIzaSyA8fgbD07roSeqUnCt25fk_g7wqP6O4nlU', 'AIzaSyAMXM81rmNJriowbyssNGgsD1zh1k8jyuY', 'AIzaSyA2Ch402MT8YquRQb7yY54EL1H25NcT3VU'];
-$new_keys = ['AIzaSyCmtBZiwE3OKQB5MuE32GrIsiBYWKvCafY']
+$new_keys = ['AIzaSyCmtBZiwE3OKQB5MuE32GrIsiBYWKvCafY', 'AIzaSyAnNBC_8Vxqbwru5kekLpfnyI0B_55knSE',
+            'AIzaSyBgmol7aDLeibHCYQpcIF1N3kWsPxldPyY','AIzaSyCRijXMq8PePTUNFQmTUwWv1aAl0PTmbn8',
+            'AIzaSyBv06Zbi7lILbbMiAzpV3sodpCoq0Kpaj8','AIzaSyB-bvK4d_OfjVP04HYwMaV0TJGnBtujIT8',
+            'AIzaSyBaP_IYj93c21M3BANk-yUcAa-pcZmGec4','AIzaSyBGijrcdBzKB-bzn26N-4M09RTyXZkObmQ',
+            'AIzaSyDWYXsF66h2gRvstTm0m5ujE0xo3uQ6Ubs','AIzaSyC7vN_C1hkYHBUIAd4DfHxWSNJY9jKl75k',
+            'AIzaSyBu1YesxixreQy2IKpxits2OFLqA3t_XHY','AIzaSyB8rBzalpm2_kO7u6zRIQQdMcWi09NGJ1k',
+            'AIzaSyCtvKvz6sIjE77eIl2OVqFeN1lxcbvs1ZM','AIzaSyCXTVtZFNckLkBg--IQA14l0JNB7hh79_4'
+          ]
 $index = 0
 $new_index = 0
 GoogleMapsService.configure do |config|
