@@ -1,0 +1,31 @@
+ID;ADDRESS;DEMAND;READY_TIME;DUE_DATE;SERVICE_TIME
+0;Country Club de Barranquilla, Barranquilla, Atlantico;0;06:00;18:00;0
+1;Carrera 39b #65-2 a 65-86, Barranquilla, Atlantico;50;06:00;09:00;900
+2;Avenida 11 De Noviembre #59-2, Barranquilla, Atlantico;10;07:00;10:00;900
+3;Calle 76 #44-1 a 44-107, Barranquilla, Atlantico;30;11:00;13:00;900
+4;Carrera 67 #74a-2 a 74a-124, Barranquilla, Atlantico;40;14:00;17:00;900
+5;Carrera 23 #70c-1 a 70c-65, Barranquilla, Atlantico;20;15:00;17:00;900
+6;Calle 80c #35d-1, Barranquilla, Atlantico;5;06:00;10:00;900
+7;Calle 42 #41-162 a 41-180, Barranquilla, Atlantico;60;09:00;12:00;900
+8;Calle 76 #39-7 a 39-155, Barranquilla, Atlantico;15;12:00;14:00;900
+9;Carrera 63 #56-1 a 56-77, Barranquilla, Atlantico;30;12:00;16:00;900
+10;Carrera 50 #79-25 a 79-279, Barranquilla, Atlantico;20;06:00;16:00;900
+11;Carrera 51 #76-1 a 76-159, Barranquilla, Atlantico;10;12:00;15:00;900
+12;Calle 69 #42-15, Barranquilla, Atlantico;50;06:00;07:00;900
+13;Carrera 65 #85-122 a 85-238, Barranquilla, Atlantico;30;06:00;08:00;900
+14;Carrera 8a #49-2 a 49-142, Barranquilla, Atlantico;10;06:00;07:00;900
+15;Carrera 13 #21-69, Barranquilla, Atlantico;40;08:00;12:00;900
+16;Carrera 7 #99c-47, Barranquilla, Atlantico;20;06:00;08:00;900
+17;Carrera 24b #72c-2 a 72c-72, Barranquilla, Atlantico;60;10:00;14:00;900
+18;Carrera 43 #55-1 a 55-103, Barranquilla, Atlantico;50;13:00;17:00;900
+19;Carrera 1a #62-2 a 62-124, Barranquilla, Atlantico;40;08:00;11:00;900
+20;Calle 57 #43-34, Soledad, Atlantico;10;09:00;13:00;900
+21;Calle 33e #2b-2 a 2b-108, Barranquilla, Atlantico;20;12:00;15:00;900
+22;Carrera 3c 1 #99b-1 a 99b-73, Barranquilla, Atlantico;30;13:00;17:00;900
+23;Calle 47b #8e-1 a 8e-107, Barranquilla, Atlantico;20;10:00;13:00;900
+24;Calle 36 #27-23, Barranquilla, Atlantico;10;14:00;17:00;900
+25;Carrera 7d #36b-1 a 36b-129, Barranquilla, Atlantico;50;08:00;11:00;900
+26;Carrera 6p #101-2 a 101-104, Barranquilla, Atlantico;60;07:00;09:00;900
+27;Carrera 14 #84b-1 a 84b-93, Barranquilla, Atlantico;40;06:00;09:00;900
+28;Carrera 13b #58-1 a 58-75, Barranquilla, Atlantico;20;06:00;08:00;900
+29;Carrera 14 #46b-2 a 46b-118, Barranquilla, Atlantico;10;10:00;15:00;900

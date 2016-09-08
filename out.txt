@@ -1,20 +1,20 @@
-1. 	[  0  7  3  1  2  8  0  ] 
-	Time: 7096.0 s 
-	Time with traffic: 6601.0 s 
-	Distance: 12300.0 m 
+1. 	[  0  6  4  7  9  2  8  0  ] 
+	Time: 8733.0 s 
+	Time with traffic: 8686.0 s 
+	Distance: 18139.0 m 
 	Waiting time: 0 s 
 	Waiting time with traffic: 0 s 
-	Services time: 4500 s 
- 	Arrival time: 2016-09-29 07:58:16 UTC 
-	Arrival time with traffic: 2016-09-29 07:50:01 UTC 
-	Demand: 180 
-2. 	[  0  4  5  6  9  0  ] 
-	Time: 11152.0 s 
-	Time with traffic: 11355.0 s 
-	Distance: 11317.0 m 
-	Waiting time: 5283.0 s 
-	Waiting time with traffic: 5504.0 s 
-	Services time: 3600 s 
- 	Arrival time: 2016-09-29 09:05:52 UTC 
-	Arrival time with traffic: 2016-09-29 09:09:15 UTC 
-	Demand: 165 
+	Services time: 5400 s 
+ 	Arrival time: 2016-09-29 08:25:33 UTC 
+	Arrival time with traffic: 2016-09-29 08:24:46 UTC 
+	Demand: 200 
+2. 	[  0  1  5  3  0  ] 
+	Time: 9996.0 s 
+	Time with traffic: 9720.0 s 
+	Distance: 19330.0 m 
+	Waiting time: 3132.0 s 
+	Waiting time with traffic: 3656.0 s 
+	Services time: 2700 s 
+ 	Arrival time: 2016-09-29 08:46:36 UTC 
+	Arrival time with traffic: 2016-09-29 08:42:00 UTC 
+	Demand: 145 

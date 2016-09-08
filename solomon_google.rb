@@ -53,13 +53,21 @@ class Node
             'traffic_model=pessimistic' + '&' +
             "key=#{$new_keys[$new_index]}"      
 
-      json_object = JSON.parse(Net::HTTP.get URI(uri))            
+      json_object = JSON.parse(Net::HTTP.get URI(uri))  
+      puts json_object          
       if json_object['status'] == 'OK'
         #return json_object['routes'][0]['legs'][0]['duration_in_traffic']['value'].to_f
         return json_object['routes'][0]['legs'][0]['duration']['value'].to_f
         #return json_object['routes'][0]['legs'][0]['distance']['value'].to_f
       else
         p json_object['status']
+        if json_object['status'] == 'OVER_QUERY_LIMIT' && ($new_index + 1) > $new_keys.size
+          puts 'Numero de peticiones permitidas acabadas por el dia...'
+          $querys_ok = false
+          return nil
+        elsif json_object['status'] == 'OVER_QUERY_LIMIT'
+          $new_index += 1
+        end
         p "query limit se esperan 15 segundos..."
         sleep(15)
       end
@@ -88,6 +96,13 @@ class Node
         return json_object['routes'][0]['legs'][0]['distance']['value'].to_f
       else
         p json_object['status']
+        if json_object['status'] == 'OVER_QUERY_LIMIT' && ($new_index + 1) > $new_keys.size
+          puts 'Numero de peticiones permitidas acabadas por el dia...'
+          $querys_ok = false
+          return nil
+        elsif json_object['status'] == 'OVER_QUERY_LIMIT'
+          $new_index += 1
+        end
         p "query limit se esperan 15 segundos..."
         sleep(15)
       end
@@ -97,8 +112,8 @@ class Node
   def calculate_time_traffic(node, time)        
     while(true)
 
-      origin = @place.gsub('#', ' ').gsub(' ', '+')
-      destination = node.place.gsub('#', ' ').gsub(' ', '+')
+      origin = @place.gsub('#', ' ').strip.gsub(' ', '+')
+      destination = node.place.gsub('#', ' ').strip.gsub(' ', '+')      
       date = time.to_i
 
       uri = 'https://maps.googleapis.com/maps/api/directions/json?' +
@@ -116,6 +131,13 @@ class Node
         #return json_object['routes'][0]['legs'][0]['distance']['value'].to_f
       else
         p json_object['status']
+        if json_object['status'] == 'OVER_QUERY_LIMIT' && ($new_index + 1) > $new_keys.size
+          puts 'Numero de peticiones permitidas acabadas por el dia...'
+          $querys_ok = false
+          return nil
+        elsif json_object['status'] == 'OVER_QUERY_LIMIT'          
+          $new_index += 1
+        end
         p "query limit se esperan 15 segundos..."
         sleep(15)
       end
@@ -161,7 +183,7 @@ class Route
     @wait_time = @services_time = @total_distance = @total_service_time = @total_time = @total_time_traffic = @wait_time_traffic = 0
     @demand = capacity
     add $nodesManager.origin
-    seed criterion
+    return nil if seed criterion == nil
     add $nodesManager.origin            
     split_routes.each do |split|      
       assign_values calculate_values(split[0], split[1])
@@ -171,7 +193,12 @@ class Route
   def seed(criterion)
     case criterion
       when 1
-        add criterion_1
+        max_node = criterion_1
+        if max_node == nil
+          return nil
+        else
+          add max_node
+        end
       when 2
         add criterion_2
     end
@@ -180,9 +207,10 @@ class Route
   # Get the times between two nodes
   def calculate_values(node_i, node_j, object = self)
     values = {}
-    wik = node_i == $nodesManager.origin ? node_i.ready_time : object.services_time     
+    wik = node_i == $nodesManager.origin ? node_i.ready_time : object.services_time         
     distance = node_i.calculate_time(node_j, object.current_time)    
     time = node_i.calculate_distance(node_j, object.current_time)
+    return false if !$querys_ok
     values[:arrival_time]  = wik + node_i.service_time + distance
     wait_time = ready_time(node_j, values[:arrival_time])
 
@@ -218,7 +246,12 @@ class Route
 
     previous_node = @route[position_node - 1]
     next_node = @route[position_node + 1]    
-    c11 = previous_node.calculate_time(node, @current_time) + node.calculate_time(next_node, @current_time) - (RoutesManager::VARIATIONS[constant][:m] * previous_node.calculate_time(next_node, @current_time))
+
+    begin
+      c11 = previous_node.calculate_time(node, @current_time) + node.calculate_time(next_node, @current_time) - (RoutesManager::VARIATIONS[constant][:m] * previous_node.calculate_time(next_node, @current_time))
+    rescue
+      return nil
+    end
 
     route_original_c12 = original_route.route[0..position_node]
     route_alternative_c12 = self.route[0..position_node + 1]
@@ -239,7 +272,11 @@ class Route
 
     c12 = copy_alternative.services_time - copy_original.services_time    
     c1 = (RoutesManager::VARIATIONS[constant][:alfa_1] * c11) + (RoutesManager::VARIATIONS[constant][:alfa_2] * c12)    
-    cc = (RoutesManager::VARIATIONS[constant][:lambda] * $nodesManager.origin.calculate_time(node, copy_original.current_time)) - c1
+    begin
+      cc = (RoutesManager::VARIATIONS[constant][:lambda] * $nodesManager.origin.calculate_time(node, copy_original.current_time)) - c1
+    rescue
+      return nil
+    end
     return cc
 
   end
@@ -269,8 +306,9 @@ class Route
     max_time = -999
     node = nil    
     $nodesManager.unvisited.each do |nodeA|
-      time = -999        
+      time = -999            
       time = nodeB.calculate_time(nodeA, Time.utc(2016,9,29,6,0) ) if nodeA != nodeB
+      return nil if !$querys_ok
       if time > max_time
         max_time = time
         node = nodeA
@@ -344,6 +382,7 @@ class RoutesManager
     routes = []
     unvisited_copy = $nodesManager.unvisited.clone
     route_original = Route.new(seed, @capacity)
+    return if route_original == nil
 
     begin
       unvisited = $nodesManager.unvisited.clone
@@ -358,6 +397,7 @@ class RoutesManager
           alternative_route.arrival_time = alternative_route.wait_time = alternative_route.services_time = alternative_route.total_distance = alternative_route.total_service_time = 0
           if alternative_route.insert_node(node, position)            
             c2 = alternative_route.calculate_c2(node, position, route_original, criterion)
+            return if c2 == nil or !$querys_ok
             if c2 >= max_c2              
               max_c2, new_route =  c2, alternative_route.clone
               new_route.route = alternative_route.route.clone
@@ -371,7 +411,8 @@ class RoutesManager
       # Assign the best route in the route original, and eliminated the node of the array unvisited
       if new_route.nil?
         routes << route_original        
-        route_original = Route.new(seed, @capacity)        
+        route_original = Route.new(seed, @capacity)
+        return if route_original == nil        
         if $nodesManager.unvisited.empty?          
           routes << route_original
         end
@@ -400,12 +441,14 @@ class RoutesManager
       (0..route.route.length-2).each do |index|
 
         nodeA = route.route[index]
-        nodeB = route.route[index + 1]        
-
-        timeAB += nodeA.calculate_time(nodeB, current_time)
-        time_trafficAB += nodeA.calculate_time_traffic(nodeB, current_time_traffic)
-
-        distanceAB += nodeA.calculate_distance(nodeB, current_time)            
+        nodeB = route.route[index + 1]
+        begin
+          timeAB += nodeA.calculate_time(nodeB, current_time)
+          time_trafficAB += nodeA.calculate_time_traffic(nodeB, current_time_traffic)
+          distanceAB += nodeA.calculate_distance(nodeB, current_time)            
+        rescue
+          return 
+        end
 
         wait_time = 0        
         wait_time = nodeB.ready_time - (current_time + timeAB + nodeA.service_time) if current_time + timeAB + nodeA.service_time < nodeB.ready_time          
@@ -600,6 +643,7 @@ $new_keys = ['AIzaSyCmtBZiwE3OKQB5MuE32GrIsiBYWKvCafY', 'AIzaSyAnNBC_8Vxqbwru5ke
           ]
 $index = 0
 $new_index = 0
+$querys_ok = true;
 GoogleMapsService.configure do |config|
   config.key = $keys[$index]
 end
